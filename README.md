@@ -16,6 +16,14 @@ The server uses:
 
 This project was built for a master's class project and is intended to be simple to run for review and grading.
 
+## Recommended Runtime
+
+The primary supported runtime for this project is a local backend instance.
+
+That is the intended full-capability setup for the app because the backend uses transformer-based retrieval plus FAISS. This works well locally, but can be memory-heavy on free hosting tiers.
+
+A Render deployment configuration is included in the repo, but it should be treated as an optional deployment path rather than the main expected runtime for grading or demos.
+
 ## What This Backend Does
 
 Given a user query or topic, the server:
@@ -181,6 +189,12 @@ This repo includes a Render config:
 
 - [render.yaml](render.yaml)
 
+Important:
+
+- local execution is the recommended way to run the full backend
+- the Render setup is included as an optional deployment example
+- free Render instances may not have enough memory for the full semantic retrieval stack used by this backend
+
 To deploy on Render:
 
 1. Create a new Web Service from this GitHub repo.
@@ -192,6 +206,8 @@ To deploy on Render:
    - `ALLOWED_HOSTS`
 4. Set `ALLOWED_HOSTS` to your Render hostname, for example:
    - `my-service.onrender.com`
+
+If the Render service exceeds memory limits, continue using the local backend as the primary runtime for the app.
 
 ## Troubleshooting
 
