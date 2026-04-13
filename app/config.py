@@ -3,10 +3,8 @@ import os
 from collections import defaultdict, deque
 from functools import lru_cache
 
-import faiss
 from dotenv import load_dotenv
 from groq import Groq
-from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
@@ -42,11 +40,15 @@ rate_limit_cache: dict[str, deque[float]] = defaultdict(deque)
 
 @lru_cache(maxsize=1)
 def get_embedding_model():
+    from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer("all-mpnet-base-v2")
 
 
 @lru_cache(maxsize=1)
 def get_index():
+    import faiss
+
     return faiss.read_index(INDEX_PATH)
 
 

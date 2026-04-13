@@ -3,6 +3,5 @@ uvicorn
 sentence-transformers
 faiss-cpu
 numpy
-pandas
 groq
 python-dotenv

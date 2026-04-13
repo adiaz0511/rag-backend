@@ -21,6 +21,11 @@ app = FastAPI(
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS or ["*"])
 
 
+@app.get("/")
+async def healthcheck():
+    return {"status": "ok"}
+
+
 @app.post("/ask")
 async def ask(
     req: QueryRequest,
