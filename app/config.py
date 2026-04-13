@@ -1,6 +1,7 @@
 import json
 import os
 from collections import defaultdict, deque
+from functools import lru_cache
 
 import faiss
 from dotenv import load_dotenv
@@ -34,12 +35,22 @@ DATA_PATH = os.path.join(BASE_PATH, "data")
 CHUNKS_PATH = os.path.join(DATA_PATH, "chunks.json")
 INDEX_PATH = os.path.join(DATA_PATH, "mpnet_faiss.index")
 
-embedding_model = SentenceTransformer("all-mpnet-base-v2")
-index = faiss.read_index(INDEX_PATH)
-
-with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
-    chunks = json.load(f)
-
 client = Groq(api_key=GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS)
 nonce_cache: dict[str, float] = {}
 rate_limit_cache: dict[str, deque[float]] = defaultdict(deque)
+
+
+@lru_cache(maxsize=1)
+def get_embedding_model():
+    return SentenceTransformer("all-mpnet-base-v2")
+
+
+@lru_cache(maxsize=1)
+def get_index():
+    return faiss.read_index(INDEX_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_chunks():
+    with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)

@@ -1,7 +1,7 @@
 import re
 import time
 
-from app.config import chunks, embedding_model, index
+from app.config import get_chunks, get_embedding_model, get_index
 from app.logging_utils import log_debug, log_info
 
 
@@ -13,6 +13,7 @@ def retrieve(query, top_k=3):
     log_debug("Retrieve step 1: start embedding encode")
     encode_start = time.perf_counter()
     try:
+        embedding_model = get_embedding_model()
         query_embedding = embedding_model.encode([query], convert_to_numpy=True)
     except Exception as e:
         log_info("Retrieve encode error type:", type(e).__name__)
@@ -26,6 +27,7 @@ def retrieve(query, top_k=3):
     log_debug("Retrieve step 2: start FAISS search")
     search_start = time.perf_counter()
     try:
+        index = get_index()
         distances, indices = index.search(query_embedding, top_k)
     except Exception as e:
         log_info("Retrieve search error type:", type(e).__name__)
@@ -36,6 +38,7 @@ def retrieve(query, top_k=3):
     log_debug("FAISS search elapsed:", round(time.perf_counter() - search_start, 3), "s")
     log_debug("Retrieve distances:", distances.tolist())
     log_debug("Retrieve indices:", indices.tolist())
+    chunks = get_chunks()
     results = [chunks[i] for i in indices[0]]
     log_debug("Retrieve result count:", len(results))
     log_debug("Retrieve elapsed:", round(time.perf_counter() - start, 3), "s")
