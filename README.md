@@ -10,8 +10,10 @@ It provides three endpoints:
 
 The server uses:
 
-- `sentence-transformers` for retrieval
-- `FAISS` for vector search
+- `BM25` for lexical retrieval
+- `SPECTER` for dense scientific retrieval
+- `MedCPT` for dense biomedical retrieval
+- reciprocal rank fusion to merge retriever results
 - `Groq` for response generation
 
 This project was built for a master's class project and is intended to be simple to run for review and grading.
@@ -28,12 +30,47 @@ A Render deployment configuration is included in the repo, but it should be trea
 
 Given a user query or topic, the server:
 
-1. finds the most relevant manual chunks from the local FAISS index
-2. builds a structured prompt
-3. sends the prompt to Groq
-4. returns JSON for the iOS app
+1. runs BM25, SPECTER, and MedCPT retrieval
+2. fuses those rankings with reciprocal rank fusion
+3. selects the highest-ranked context chunks
+4. builds a structured prompt
+5. sends the prompt to Groq
+6. returns JSON for the iOS app
 
 The `/lesson` and `/quiz` responses include source references tied back to the retrieved chunks.
+
+## Hybrid Retrieval Architecture
+
+The backend now uses three retrievers:
+
+1. `BM25`
+2. `SPECTER`
+3. `MedCPT`
+
+The dense retrievers load query encoders at runtime:
+
+- `allenai/specter`
+- `ncbi/MedCPT-Query-Encoder`
+
+The rankings are merged with reciprocal rank fusion using values from `data/hybrid_retriever_config.json`.
+
+This replaces the older single-retriever MPNet setup.
+
+## Required Data Files
+
+These files must exist in `data/`:
+
+- `chunks.json`
+- `bm25_index.json`
+- `hybrid_retriever_config.json`
+- `specter_faiss.index`
+- `medcpt_faiss.index`
+
+The old MPNet artifacts are no longer used by the retrieval pipeline:
+
+- `mpnet_faiss.index`
+- `mpnet_embeddings.npy`
+- `all-mpnet-base-v2`
 
 ## Project Structure
 
@@ -42,10 +79,14 @@ Important files:
 - [app/main.py](app/main.py): FastAPI app and routes
 - [app/security.py](app/security.py): request signing and lightweight auth
 - [app/rag.py](app/rag.py): retrieval logic
+- [app/config.py](app/config.py): hybrid retriever config and cached loaders
 - [app/prompting.py](app/prompting.py): prompt construction
 - [app/generation.py](app/generation.py): model response parsing and normalization
 - [data/chunks.json](data/chunks.json): knowledge chunks
-- [data/mpnet_faiss.index](data/mpnet_faiss.index): vector index
+- [data/bm25_index.json](data/bm25_index.json): tokenized chunks for BM25
+- [data/hybrid_retriever_config.json](data/hybrid_retriever_config.json): retriever and fusion settings
+- [data/specter_faiss.index](data/specter_faiss.index): SPECTER vector index
+- [data/medcpt_faiss.index](data/medcpt_faiss.index): MedCPT vector index
 - [SECURITY_SETUP.md](SECURITY_SETUP.md): request signing details
 - [render.yaml](render.yaml): Render deployment config
 
@@ -111,6 +152,21 @@ Notes:
 - for local testing, `ALLOWED_HOSTS` should include `localhost` and `127.0.0.1`
 
 ## Run the Server Locally
+
+Recommended one-command launcher:
+
+```bash
+./scripts/run_local.sh
+```
+
+What it does:
+
+- loads environment variables from `.env` if present
+- uses local model folders only when both `local_models/specter` and `local_models/MedCPT-Query-Encoder` exist
+- otherwise allows Hugging Face model loading at startup
+- starts the backend with `STRICT_HYBRID_RETRIEVAL=true` so configured retriever failures are surfaced immediately
+
+Manual alternative:
 
 ```bash
 source venv/bin/activate

@@ -17,3 +17,5 @@ __pycache__/
 .coverage
 htmlcov/
 
+backend_package_hybrid/
+local_models/

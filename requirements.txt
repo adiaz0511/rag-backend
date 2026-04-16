@@ -1,7 +1,9 @@
 fastapi
 uvicorn
-sentence-transformers
 faiss-cpu
 numpy
+torch
+transformers
+rank-bm25
 groq
 python-dotenv

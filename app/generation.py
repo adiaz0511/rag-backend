@@ -216,10 +216,10 @@ def _normalize_payload(task: str, payload: dict, context_chunks: list[str]) -> d
 
 def generate_json(prompt, task: str, context_chunks: list[str]):
     start = time.perf_counter()
-    log_debug("\n--- GENERATION START ---")
-    log_debug("Generation task:", task)
-    log_debug("Prompt length:", len(prompt))
-    log_debug("Context chunk count:", len(context_chunks))
+    log_info("--- GENERATION START ---")
+    log_info("Generation task:", task)
+    log_info("Prompt length:", len(prompt))
+    log_info("Context chunk count:", len(context_chunks))
 
     if task == "qa":
         model_candidates = [QA_PRIMARY_MODEL, FALLBACK_MODEL]
@@ -231,14 +231,14 @@ def generate_json(prompt, task: str, context_chunks: list[str]):
         if model_name not in deduped_candidates:
             deduped_candidates.append(model_name)
 
-    log_debug("Model candidates:", deduped_candidates)
+    log_info("Model candidates:", deduped_candidates)
 
     for attempt_number, model_name in enumerate(deduped_candidates, start=1):
         try:
             attempt_start = time.perf_counter()
-            log_debug(f"\n--- MODEL ATTEMPT {attempt_number} START ---")
-            log_debug("Generation model:", model_name)
-            log_debug("Timeout seconds:", GROQ_TIMEOUT_SECONDS)
+            log_info(f"--- MODEL ATTEMPT {attempt_number} START ---")
+            log_info("Generation model:", model_name)
+            log_info("Timeout seconds:", GROQ_TIMEOUT_SECONDS)
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
@@ -247,19 +247,21 @@ def generate_json(prompt, task: str, context_chunks: list[str]):
                 timeout=GROQ_TIMEOUT_SECONDS,
             )
             raw_content = response.choices[0].message.content or ""
-            log_debug("Response length:", len(raw_content))
+            log_info("Response length:", len(raw_content))
             log_debug("Raw model response:")
             log_debug(raw_content)
             parsed = _parse_model_json(raw_content)
+            log_info("Model JSON parse success")
             log_debug("Parsed model JSON:")
             log_debug(json.dumps(parsed, indent=2, ensure_ascii=False))
             normalized = _normalize_payload(task, parsed, context_chunks)
+            log_info("Payload normalization success")
             log_debug("Normalized response JSON:")
             log_debug(json.dumps(normalized, indent=2, ensure_ascii=False))
-            log_debug("Model attempt elapsed:", round(time.perf_counter() - attempt_start, 3), "s")
-            log_debug("--- MODEL ATTEMPT SUCCESS ---")
-            log_debug("Total generation elapsed:", round(time.perf_counter() - start, 3), "s")
-            log_debug("--- GENERATION SUCCESS ---")
+            log_info("Model attempt elapsed:", round(time.perf_counter() - attempt_start, 3), "s")
+            log_info("--- MODEL ATTEMPT SUCCESS ---")
+            log_info("Total generation elapsed:", round(time.perf_counter() - start, 3), "s")
+            log_info("--- GENERATION SUCCESS ---")
             return normalized
         except Exception as e:
             error_text = str(e)

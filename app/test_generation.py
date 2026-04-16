@@ -1,99 +1,30 @@
-import os
-import json
-import faiss
-
-from sentence_transformers import SentenceTransformer
-from groq import Groq
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# Paths
-BASE_PATH = os.path.dirname(os.path.dirname(__file__))
-DATA_PATH = os.path.join(BASE_PATH, "data")
-
-CHUNKS_PATH = os.path.join(DATA_PATH, "chunks.json")
-INDEX_PATH = os.path.join(DATA_PATH, "mpnet_faiss.index")
-
-# Load embedding model
-print("Loading embedding model...")
-embedding_model = SentenceTransformer("all-mpnet-base-v2")
-
-# Load FAISS index
-print("Loading FAISS index...")
-index = faiss.read_index(INDEX_PATH)
-
-# Load chunks
-print("Loading chunks...")
-with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
-    chunks = json.load(f)
-
-print("System loaded")
+from app.generation import generate_json
+from app.prompting import build_prompt
+from app.rag import retrieve
 
 
-# Initialize Groq client
-client = Groq(api_key=GROQ_API_KEY)
-
-
-# Retrieval
-def retrieve(query, top_k=5):
-    query_embedding = embedding_model.encode([query], convert_to_numpy=True)
-    distances, indices = index.search(query_embedding, top_k)
-    return [chunks[i] for i in indices[0]]
-
-
-# Prompt builder
-def build_prompt(query, context_chunks):
-    context = "\n\n".join(context_chunks)
-
-    prompt = f"""
-You are a medical assistant helping parents understand a transplant care manual.
-
-Use only the information in the context below.
-
-Context:
-{context}
-
-Question:
-{query}
-
-Answer:
-"""
-    return prompt.strip()
-
-
-# Generation
-def generate(prompt):
-    response = client.chat.completions.create(
-        model="groq/compound",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content
-
-
-# Test query
 query = "What temperature is considered dangerous after transplant?"
 
 print("\nQuery:", query)
 
-context_chunks = retrieve(query)
+context_chunks = retrieve(query, top_k=5)
+assert len(context_chunks) == 5, "Expected five retrieved chunks for generation"
+assert any("101.4" in chunk or "100.4" in chunk for chunk in context_chunks), "Generation context missing temperature guidance"
 
 print("\nRetrieved Chunks:")
-for i, c in enumerate(context_chunks):
+for i, chunk in enumerate(context_chunks, start=1):
     print("\n" + "=" * 60)
-    print(f"Chunk {i+1}")
-    print(c[:300])
+    print(f"Chunk {i}")
+    print(chunk[:300])
 
-prompt = build_prompt(query, context_chunks)
+prompt = build_prompt(query, context_chunks, "qa")
 
 print("\nGenerating answer...\n")
 
-answer = generate(prompt)
+answer = generate_json(prompt, "qa", context_chunks)
+assert isinstance(answer, dict), "Generation result should be a JSON object"
+assert "source_indices" in answer, "Generation result must include source indices"
+assert answer["source_indices"], "Generation result should cite at least one source"
 
 print("Answer:\n")
 print(answer)
